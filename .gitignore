@@ -15,3 +15,21 @@ code/reports/
 repomix-output.xml
 .DS_Store
 .obsidian/workspace.json
+
+# Obsidian
+.obsidian/
+docs/Untitled.canvas
+docs/Welcome.md
+
+# SpiNNaker scratch (not part of M7 PR)
+code/test_spinnaker_*.py
+code/SpiNNaker_Port_Plan.md
+
+# Working notes
+docs/01 - Notes/
+
+# Session dumps
+docs/SESSION_SAVE_*.md
+
+# Duplicate/backup code
+code/NeurIPS2026_M7_clean*
