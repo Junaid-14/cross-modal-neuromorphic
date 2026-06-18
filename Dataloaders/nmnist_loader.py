@@ -16,6 +16,7 @@ def get_nmnist_loaders(
     num_workers=None,
     pin_memory=None,
     persistent_workers=True,
+    save_to='./ICONS_M7/datasets',
 ):
     """
     Get N-MNIST train and test data loaders
@@ -54,13 +55,13 @@ def get_nmnist_loaders(
     
     # Load datasets
     train_dataset = tonic.datasets.NMNIST(
-        save_to='./data',
+        save_to=save_to,
         transform=frame_transform,
         train=True
     )
 
     test_dataset = tonic.datasets.NMNIST(
-        save_to='./data',
+        save_to=save_to,
         transform=frame_transform,
         train=False
     )

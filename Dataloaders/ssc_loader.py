@@ -48,7 +48,7 @@ def _events_to_dense(events, channels: int, time_bins: int) -> torch.Tensor:
 def get_ssc_loaders(
     batch_size: int = 32,
     num_workers: int = 2,
-    save_to: str = "./data",
+    save_to: str = "./ICONS_M7/datasets",
     time_bins: int = 100,
     use_cache: bool = True,
     cache_path: Path | None = None,

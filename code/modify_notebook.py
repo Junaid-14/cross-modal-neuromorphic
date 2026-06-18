@@ -2,8 +2,10 @@
 """Modify NeurIPS notebook to add DVS-Gesture tri-modal CL support."""
 import json
 import copy
+from pathlib import Path
 
-with open('NeurIPS2026_M7_clean (3) (1).ipynb', 'r') as f:
+SCRIPT_DIR = Path(__file__).parent
+with open(SCRIPT_DIR / 'NeurIPS2026_M7_clean (3) (1).ipynb', 'r') as f:
     nb = json.load(f)
 
 cells = nb['cells']
@@ -558,7 +560,7 @@ cells[cl_cell_idx]['source'] = list(src_text)
 # =====================================================================
 # 4. Save modified notebook
 # =====================================================================
-with open('NeurIPS2026_M7_clean (3) (1).ipynb', 'w') as f:
+with open(SCRIPT_DIR / 'NeurIPS2026_M7_clean (3) (1).ipynb', 'w') as f:
     json.dump(nb, f, indent=1)
 
 print("Notebook modified successfully!")

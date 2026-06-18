@@ -113,12 +113,12 @@ def build_backbone(
     spatial_size: Tuple[int, int] = (34, 34),
     num_classes: int = 10,
 ) -> nn.Module:
-    if input_type in {"nmnist", "dvs_gesture"}:
+    if input_type in {"nmnist", "dvs_gesture", "cifar10dvs"}:
         return VisualBackbone(
             input_channels=input_channels,
             num_classes=num_classes,
             spatial_size=spatial_size,
         )
-    if input_type in {"shd", "ssc"}:
+    if input_type in {"shd", "ssc", "ntidigits18"}:
         return AudioBackbone(input_size=input_size, num_classes=num_classes)
     raise ValueError(f"Unknown input_type: {input_type}")

@@ -32,7 +32,7 @@ def get_dvs_gesture_loaders(
     num_workers: int | None = None,
     pin_memory: bool | None = None,
     persistent_workers: bool = True,
-    save_to: str = "./data",
+    save_to: str = "./ICONS_M7/datasets",
     time_window: int = 1000,
     target_spatial_size: Tuple[int, int] = (128, 128),
 ) -> Tuple[DataLoader, DataLoader]:

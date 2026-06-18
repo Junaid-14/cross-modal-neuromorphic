@@ -77,8 +77,8 @@ Then run any test script — it will attempt to connect to real hardware.
 Once hardware is confirmed, run this minimal test first:
 
 ```bash
-source .venv/bin/activate
-python test_spinnaker_fc512to10.py
+source code/.venv/bin/activate
+python code/test_spinnaker_fc512to10.py
 ```
 
 This is the smallest real-weight test. If it produces actual spikes from the trained N-MNIST head, the toolchain → hardware pipeline is fully working.

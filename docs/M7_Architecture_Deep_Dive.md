@@ -31,7 +31,7 @@ The single-file production script that trains M7 on three sequential neuromorphi
 **Why a single 677-line script?** This is a research artifact, not a production microservice. Self-containment guarantees:
 1. **Reviewability:** A NeurIPS reviewer can read the entire pipeline in 10 minutes without chasing imports across 12 modules.
 2. **Reproducibility:** No hidden `src/m7/models/submodule.py` dependencies. Everything is explicit.
-3. **Portability:** Runs on a laptop with `python m7_trimodal_run.py`. No Docker, no cluster, no `pip install -e .`.
+3. **Portability:** Runs on a laptop with `python code/m7_trimodal_run.py`. No Docker, no cluster, no `pip install -e .`.
 
 **Alternative considered:** A proper package (`m7/`, `m7/models/`, `m7/data/`, `m7/training/`). Rejected because for a paper submission, reviewers prefer single-file reproducibility. If this were a product, the package structure would be essential.
 
@@ -94,7 +94,7 @@ CONFIG = {
 - `gradient_clip: 1.0`: Prevents gradient explosion in recurrent SNN paths.
 
 ### 🔗 How It Connects
-- **Called by:** Nothing. This is the entry point. `python m7_trimodal_run.py` executes lines 665–677.
+- **Called by:** Nothing. This is the entry point. `python code/m7_trimodal_run.py` executes lines 665–677.
 - **Calls:** All internal classes and functions defined in this file.
 - **Outputs:** Checkpoints to `CKPT_DIR/`, CSV to `RESULTS_DIR/`, stdout logs.
 
@@ -292,7 +292,7 @@ dvs_transform = tonic.transforms.Compose([
 - 50ms time bins → ~120 frames for a 6-second gesture. Collated to 25 by `dvs_collate_fn`.
 
 ### 🔗 How It Connects
-- **Called by:** Module-level code at import time (lines 113–179 run when `python m7_trimodal_run.py` starts).
+- **Called by:** Module-level code at import time (lines 113–179 run when `python code/m7_trimodal_run.py` starts).
 - **Outputs:** `train_loader_nmnist`, `val_loader_nmnist`, `test_loader_nmnist`, and equivalents for SHD and DVS.
 - **Consumed by:** `ContinualLearner.train_task()` and `evaluate()`.
 

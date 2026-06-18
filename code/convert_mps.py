@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Convert NeurIPS M7 notebook script to MPS-compatible version."""
 import re
+from pathlib import Path
 
-with open('m7_raw.py', 'r') as f:
+SCRIPT_DIR = Path(__file__).parent
+with open(SCRIPT_DIR / 'm7_raw.py', 'r') as f:
     code = f.read()
 
 # =============================================================================
@@ -168,7 +170,7 @@ code = code.replace(old_cuda_info2, new_cuda_info2)
 # 6. Write output
 # =============================================================================
 
-with open('m7_mps.py', 'w') as f:
+with open(SCRIPT_DIR / 'm7_mps.py', 'w') as f:
     f.write(code)
 
 print("Created m7_mps.py")

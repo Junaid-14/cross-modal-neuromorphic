@@ -1,0 +1,472 @@
+%=====================================================================
+%  Cross-Modal Correspondence in Continual Spiking Networks:
+%  An Engineered Bridge, Not an Emergent Geometry
+%  A CONTROLLED-NEGATIVE paper. Every number below is pulled from a
+%  results file in this repo; gaps are marked \todo{verify: ...}.
+%  Compiles out-of-the-box on Overleaf (pdfLaTeX or LaTeX->DVI->PS->PDF).
+%
+%  NUMBER PROVENANCE (file -> number), for the author:
+%   - results/hypergraph_anchor_v2/report.txt  -> in-domain V2A 84.43/79.97%,
+%     held-out 18.75/21.88%, gaps; n=8 seeds.
+%   - results/hypergraph_anchor_v2/procrustes.json -> Procrustes 0.0/0.0543/-0.0020/0.0563.
+%   - results/structural_diagnostic/rdm_analysis.txt -> r=0.0513 (p=0.7379),
+%     vision mag rho=0.1128 (p=0.4564), audio mag rho=-0.0395 (p=0.7953).
+%   - results/joint_diagnostic/summary.csv + cell_*.csv -> the 2x2
+%     (per-sample V2A/A2V/held-out-4/perm-null/det-gap/probe), seeds 42/123/456
+%     (separate) and 42 (shared). n_vis_heldout=3969, n_aud_heldout=909.
+%   - results/hypergraph_anchor_v2/run.log (lines ~1294-1298) -> baseline
+%     table (Retention/V2A/Held-out per condition).
+%   - results/cl_confirmation/cl_confirm.log -> N-MNIST 97.21% (10-class),
+%     T1 retention ~97.3% after T2/T3.
+%   - results/hypergraph_anchor/run2.log + cl_confirm.log -> SHD 79.64% (20-class).
+%=====================================================================
+\documentclass[conference]{IEEEtran}
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+
+% Inline TODO marker (clearly visible; no extra package needed).
+\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+
+\title{Cross-Modal Correspondence in Continual Spiking Networks\\
+Is Engineered, Not Emergent:\\
+A Controlled Negative Result}
+
+\author{
+\IEEEauthorblockN{\todo{Author names}}
+\IEEEauthorblockA{\todo{Affiliation, email}}
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+A widespread intuition---the ``Platonic representation'' view---holds that
+models trained on different modalities converge toward a shared underlying
+geometry, which would let a system transfer a concept learned for one sense
+(e.g.\ a visual digit) to another (e.g.\ an auditory digit) without further
+supervision. We test this directly in a neuromorphic setting with two
+spiking backbones trained separately on N-MNIST (visual digits) and SHD
+(audio digits). We ask a single, sharp question: \emph{does cross-modal
+correspondence generalize to digit classes that were never paired across
+modalities?} Our answer is a controlled negative. (i) Lightweight
+correspondence heads that supervise each modality onto fixed orthonormal
+anchors reach $80$--$84\%$ in-domain cross-modal retrieval---but this is
+\emph{high by construction}, since both modalities are pushed onto the same
+fixed targets; it is not a finding. (ii) On held-out digits $\{6,7,8,9\}$
+that never receive a shared target, retrieval is at chance: $18.8\%$ (MLP)
+and $21.9\%$ (linear) versus a $25\%$ four-class chance, and a
+parameter-free orthogonal Procrustes map retrieves $0.0\%$. (iii) A
+representational-dissimilarity (RDM) analysis finds no shared geometry
+between the two backbones (vision--audio $r=0.05$, $p=0.74$) and no
+magnitude/ordinal axis (vision $\rho=0.11$, audio $\rho=-0.04$). (iv) A
+joint-encoder $2{\times}2$ ablation then shows that any residual held-out
+alignment is an \emph{architectural} artifact of weight sharing, not of the
+learning objective: a shared classifier produces $95\%$ held-out retrieval
+with zero cross-modal supervision (a supervision leak, $n{=}1$), while a
+shared encoder core alone is seed-unstable ($46/36/0.6\%$ across three
+seeds, one collapsing below chance), and---critically---the actual
+cross-modal contrastive loss \emph{hurts} held-out retrieval
+($\text{OFF}\ge\text{ON}$ in all three seeds). We frame the result through
+the zero-shot-learning necessary condition \cite{palatucci2009}: arbitrarily
+paired classes cannot transfer without supplied side information, which we
+withheld for $\{6,7,8,9\}$ by design.
+\end{abstract}
+
+\begin{IEEEkeywords}
+spiking neural networks, neuromorphic computing, cross-modal alignment,
+zero-shot generalization, representational convergence, controlled negative
+\end{IEEEkeywords}
+
+%=====================================================================
+\section{Introduction}
+%=====================================================================
+Neuromorphic spiking neural networks (SNNs) are attractive for edge
+deployment because they encode information in sparse, event-driven spikes,
+but making them learn \emph{continually} across \emph{multiple senses}
+remains hard. A natural ambition for such a system is cross-modal transfer:
+having learned that a visual ``3'' and an auditory ``3'' co-occur, can the
+network infer---for a class it has \emph{never} seen paired---that a visual
+``7'' corresponds to an auditory ``7''? If separately trained representations
+truly converge to a shared geometry, as the Platonic representation
+hypothesis \cite{platonic} and relative-representation stitching
+\cite{relreps} suggest they often do in deep networks, the answer should be
+yes: a single map learned on a few classes should extrapolate to the rest.
+
+This paper tests that prediction in a controlled neuromorphic setting and
+reports a negative result, dissected mechanistically. We train per-modality
+SNN backbones on visual (N-MNIST \cite{nmnist}) and audio (SHD \cite{shd})
+digits, build a correspondence interface between them with lightweight
+heads supervised onto fixed orthonormal anchors, and then ask whether the
+interface---or the backbones themselves---contains a geometry generalizable
+to the four held-out digits $\{6,7,8,9\}$ that are never given a shared
+target. They do not. Held-out retrieval sits at chance across nonlinear,
+linear, and parameter-free maps; the two backbones share no relational
+structure (RDM $r=0.05$); and a joint-encoder ablation shows that the only
+thing that produces apparent held-out alignment is shared \emph{weights},
+not the cross-modal learning signal.
+
+We are deliberate about framing. The in-domain correspondence accuracy
+($80$--$84\%$) is \emph{high by construction}: both modalities are
+supervised against the same fixed anchors, so they land near each other by
+design. We never present it as a discovery. Our contribution is the rigorous
+\emph{negative} and its mechanism.
+
+\noindent\textbf{Contributions.}
+\begin{itemize}
+  \item A controlled held-out protocol (train correspondence on digits
+        0--5, test on 6--9) with a deterministic null, three map families,
+        and $n{=}8$ seeds, showing held-out retrieval at chance and Procrustes
+        $0\%$---correspondence is engineered, not a discovered shared geometry.
+  \item An RDM root-cause analysis: the separately trained backbones share
+        no relational structure ($r=0.05$, $p=0.74$) and carry no
+        ordinal/magnitude axis, explaining why no map extrapolates.
+  \item A joint-encoder $2{\times}2$ (shared/separate classifier $\times$
+        contrastive loss on/off) that isolates the locus of any residual
+        alignment: it is architectural (a shared-classifier supervision leak;
+        an unstable shared core), and the contrastive loss actively
+        \emph{hurts} held-out generalization ($\text{OFF}\ge\text{ON}$ in
+        $3/3$ seeds).
+  \item An interpretation via the zero-shot-learning necessary condition
+        \cite{palatucci2009}: cross-modal transfer of arbitrarily paired
+        classes requires side information, which we deliberately withheld.
+\end{itemize}
+
+%=====================================================================
+\section{Related Work}\label{sec:related}
+%=====================================================================
+\textbf{Representational convergence.} The Platonic representation
+hypothesis \cite{platonic} argues that models across modalities and
+objectives trend toward a shared representation of reality; relative
+representations \cite{relreps} exploit this by stitching separately trained
+latent spaces with a single learned or orthogonal map, enabling zero-shot
+model merging. These results are established in dense deep networks at
+scale; whether they extend to small, separately trained \emph{spiking}
+backbones on heterogeneous neuromorphic sensors is the question we
+operationalize. Our negative result is a controlled counterpoint:
+convergence is not automatic here, and a single rotation does not
+extrapolate to unseen classes.
+
+\textbf{Zero-shot learning.} Zero-shot transfer to unseen classes requires
+that those classes be representable through shared side information
+\cite{palatucci2009}---attributes, embeddings, or (as in our anchors) fixed
+target vectors. \todo{xian: cite ZSL survey (Xian et al.) here and verify
+bibliography entry.} Our held-out classes are deliberately given no shared
+target; chance-level cross-modal retrieval is therefore the
+\emph{predicted} outcome, not an algorithmic failure, and we report it as
+such.
+
+\textbf{Cross-modal alignment and neuromorphic memory.} Contrastive
+objectives align modalities in a shared space (we use the supervised
+contrastive form \cite{supcon}); prior neuromorphic work studies
+modality-dependent memory in cross-modal SNNs \cite{paper1}. Our joint
+encoder reuses a shared core and contrastive loss, but we find the
+contrastive signal does not generalize to unpaired classes.
+
+%=====================================================================
+\section{Methods}\label{sec:methods}
+%=====================================================================
+\subsection{Datasets and backbones}
+We use N-MNIST \cite{nmnist} (visual event frames, $34{\times}34{\times}2$,
+densified to $25$ time steps) and SHD \cite{shd} (audio, densified to
+$100{\times}700$, labels reduced modulo $10$). Per-modality SNN backbones
+use leaky integrate-and-fire (LIF) neurons with leak $\beta{=}0.9$ and
+rate-coded readouts (spike counts summed over time); the visual stem is
+convolutional and the audio stem is fully connected, both emitting
+$512$-dimensional features. Standalone single-task accuracies are
+$97.21\%$ for N-MNIST (10-class head) and $79.64\%$ for SHD; the SHD number
+reflects a $20$-class output head, not lower feature quality, and is stated
+only for reference.
+
+\subsection{Frozen-backbone correspondence with fixed anchors}
+\label{sec:method:corr}
+We freeze both backbones and train lightweight correspondence heads that
+project the $512$-d features into a $64$-d anchor space: a linear head
+\texttt{Linear(512,64)} and an MLP head
+\texttt{Linear(512,256)$\to$GELU$\to$Linear(256,64)}. Ten fixed orthonormal
+anchor vectors (one per digit, from a QR decomposition) serve as
+\emph{immutable} targets. Each modality's L2-normalized projection $z$ is
+trained to its digit anchor with a cosine-classifier cross-entropy loss,
+\begin{equation}
+\mathcal{L}_{\mathrm{corr}} \;=\; \mathrm{CE}\!\left( \frac{z A^{\!\top}}{\tau},\; y \right),
+\quad z = \tfrac{\mathrm{proj}(\mathrm{backbone}(x))}{\|\mathrm{proj}(\mathrm{backbone}(x))\|},
+\label{eq:loss}
+\end{equation}
+with temperature $\tau{=}0.1$ and fixed anchor matrix $A$. Because the
+targets are fixed (not learned), they cannot drift---the failure mode of a
+shared, trainable target---and because nothing on the inference path is
+updated, retention of the original tasks is zero-forgetting by construction
+(verified at $97.3\%$ retention of N-MNIST through the task sequence).
+
+\subsection{Held-out protocol}
+Digits are split into train classes $\{0,\dots,5\}$ and held-out classes
+$\{6,7,8,9\}$. Correspondence is trained on $0$--$5$ only; $\{6,\dots,9\}$
+receive \emph{no shared target} and are reserved to test generalization. We
+evaluate three map families: the nonlinear MLP head, the linear head, and a
+parameter-free orthogonal Procrustes rotation $R$ fit on train-class
+prototypes and applied to held-out prototypes. We also compute a
+deterministic null (mean cosine to non-matching prototypes, no shuffle) and
+report the gap (same$-$null).
+
+\subsection{Joint-encoder $2{\times}2$ ablation}
+\label{sec:method:joint}
+To separate architectural sharing from the learning objective, we train a
+single encoder from scratch on both modalities (visual/audio stems into a
+\emph{shared} core \texttt{Linear(256,128)$\to$GELU}, L2-normalized) with
+within-modality digit classification on all $0$--$9$. We cross two axes:
+classifier \{separate per modality vs.\ one shared head\} and cross-modal
+contrastive loss \{on (supervised contrastive \cite{supcon}, temperature
+$0.1$, applied to $0$--$5$ only) vs.\ off\}. The contrastive-off row is
+decisive: if held-out $6$--$9$ align with no cross-modal supervision, the
+alignment is architectural.
+
+\subsection{Metrics and statistical controls}
+Held-out retrieval is computed \emph{per sample}: each held-out test sample
+is matched to its nearest opposite-modality class prototype, with chance
+$=10\%$ over all ten classes (we also report the four-class variant at
+$25\%$ chance for cross-reference). We use a permutation null (relabel
+prototypes, $200$ iterations) as an empirical chance estimate and a
+binomial test against the analytical $10\%$ level ($n_{\mathrm{vis}}{=}3969$,
+$n_{\mathrm{aud}}{=}909$ held-out samples). An untrained-encoder control and
+the deterministic null guard against metric artifacts. We pre-registered
+the expectation that held-out retrieval be at chance and report deviations
+honestly.
+
+%=====================================================================
+\section{Results}\label{sec:results}
+%=====================================================================
+\subsection{In-domain correspondence is high---by construction}
+The correspondence heads reach $84.43\%\pm1.17$ (MLP) and $79.97\%\pm0.99$
+(linear) in-domain visual$\to$audio retrieval over $n{=}8$ seeds, at
+$97.3\%$ retention. \todo{verify: in-domain A2V and prototype-alignment
+numbers are not in the results files; omit or fill from a sourced file.}
+We stress that these numbers are high \emph{by construction}: both
+modalities are supervised onto the \emph{same} fixed anchors, so their
+projections necessarily land near each other. This is the expected behavior
+of the training objective, not evidence of a discovered shared geometry, and
+we do not present it as a finding.
+
+\subsection{Held-out generalization fails across all map families}
+On digits $\{6,\dots,9\}$, never given a shared target, retrieval collapses
+to chance (Table~\ref{tab:heldout}): $18.75\%\pm16.54$ (MLP) and
+$21.88\%\pm19.52$ (linear) against a $25\%$ four-class chance, with gaps
+indistinguishable from zero. The parameter-free orthogonal Procrustes map
+retrieves $0.0\%$ (same-class alignment $0.054$ vs.\ null $-0.002$). Because
+the linear map---the least constrained of the three---also fails, the
+deficit is not an under-capacity artifact; because Procrustes fails, no
+global rotation relates the two held-out geometries.
+
+\begin{table}[t]
+\centering
+\caption{Held-out generalization (digits $6$--$9$, never supervised; four-class
+retrieval chance $=25\%$). All map families sit at chance; Procrustes
+retrieves $0\%$. Mean $\pm$ std over $n{=}8$ seeds. Sources:
+\texttt{results/hypergraph\_anchor\_v2/report.txt}, \texttt{procrustes.json}.}
+\label{tab:heldout}
+\begin{tabular}{lccc}
+\toprule
+Map & Held-out retrieval & Gap (same$-$null) & Verdict \\
+\midrule
+MLP head (nonlinear)    & $18.75 \pm 16.54\%$ & $-0.044 \pm 0.147$ & at chance \\
+Linear head             & $21.88 \pm 19.52\%$ & $\phantom{-}0.039 \pm 0.084$ & at chance \\
+Procrustes (orthogonal) & $0.0\%$             & $\phantom{-}0.056$           & at chance \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Root cause: no shared geometry (RDM)}
+A representational-dissimilarity analysis explains why nothing extrapolates:
+the two backbones do not share relational structure. The vision--audio RDM
+correlation is $r=0.0513$ ($p=0.7379$); nor is there a shared ordinal/
+magnitude axis---Spearman $\rho$ between embedding magnitude and digit value
+is $0.1128$ ($p=0.4564$) for vision and $-0.0395$ ($p=0.7953$) for audio
+(source: \texttt{results/structural\_diagnostic/rdm\_analysis.txt}). With
+neither a shared global geometry nor a latent ordering to extrapolate along,
+no map fit on $\{0,\dots,5\}$ can reach $\{6,\dots,9\}$.
+
+\subsection{The joint-encoder $2{\times}2$: alignment is architectural}
+If frozen backbones share no geometry, does \emph{co-training} a single
+encoder on both modalities create one? Table~\ref{tab:2x2} reports the
+per-sample held-out metric (chance $10\%$). Three observations:
+
+\textbf{(a) A shared classifier is a supervision leak.} With one shared
+$0$--$9$ head and \emph{no} cross-modal loss, held-out retrieval is
+$95.4\%$ (V2A) / $88.7\%$ (A2V). This is not learning: the shared head is
+trained to output ``7'' in both modalities, which forces visual-$7$ and
+audio-$7$ into the same slot. It is the artifact that \emph{explains}
+apparent generalization, not a positive result, and it is $n{=}1$.
+
+\textbf{(b) The shared core alone is seed-unstable.} With \emph{separate}
+classifiers and no cross-modal loss, retrieval is $46.0\%$, $35.9\%$, and
+$0.6\%$ across seeds $42/123/456$ (mean $27.5\%\pm19.5$). Two seeds show a
+moderate shared-core effect; the third collapses \emph{below} chance
+(binomial $z\approx-20$ vs.\ $10\%$). This is not a robust phenomenon.
+
+\textbf{(c) The contrastive loss hurts.} Turning the cross-modal
+contrastive loss \emph{on} does not improve held-out retrieval---it reduces
+it: $\text{OFF}\ge\text{ON}$ in all three seeds ($46{\ge}20$,
+$36{\ge}26$, $0.6{\ge}0.4$; means $27.5\%$ vs.\ $15.2\%$). The genuine
+cross-modal learning signal over-specializes the shared geometry to the
+trained classes $\{0,\dots,5\}$ and does not transfer to $\{6,\dots,9\}$.
+
+\begin{table}[t]
+\centering
+\caption{Joint-encoder $2{\times}2$: per-sample held-out retrieval
+(digits $6$--$9$; chance $=10\%$ over all ten classes; permutation null
+$\approx10\%$). The only cell well above chance is the shared-classifier
+row---a supervision leak, not learning. Sources:
+\texttt{results/joint\_diagnostic/summary.csv}, \texttt{cell\_*.csv}.}
+\label{tab:2x2}
+\begin{tabular}{llcccc}
+\toprule
+Classifier & SupCon & V2A (\%) & A2V (\%) & det-gap & seeds \\
+\midrule
+Separate & off & $27.5 \pm 19.5$ & $42.6 \pm 14.9$ & $0.084$ & 3 \\
+Separate & on  & $15.2 \pm 10.7$ & $14.3 \pm 10.6$ & $-0.021$ & 3 \\
+Shared   & off & $95.4$          & $88.7$          & $1.085$ & 1 \\
+Shared   & on  & $94.8$          & $86.1$          & $1.092$ & 1 \\
+\midrule
+\multicolumn{6}{l}{Permutation null (all cells): $\approx9.6$--$10.1\%$.} \\
+\multicolumn{6}{l}{Within-modality $6$--$9$ probe (gate): vis $\sim94$--$95\%$, aud $\sim86$--$89\%$ (passes).} \\
+\multicolumn{6}{l}{Separate-row per-seed V2A: off $\{46.0, 35.9, 0.6\}$; on $\{19.7, 25.5, 0.4\}$.} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Baseline context}
+For reference, the correspondence interface achieves $84.4\%$/$80.0\%$
+in-domain V2A (MLP/linear) at $97.3\%$ retention, against
+no-alignment ($\sim13.3\%$ V2A) and frozen-backbone ($14.8\%$) baselines
+(source: \texttt{results/hypergraph\_anchor\_v2/run.log}). The in-domain
+gap is an effect of the anchors, not of representational convergence; the
+held-out numbers above are the load-bearing comparison.
+
+% Optional figures (drop the PDFs in and uncomment).
+% \begin{figure}[t]
+% \centering
+% % \includegraphics[width=\columnwidth]{fig_rdm.pdf}
+% \fbox{\parbox{0.9\columnwidth}{\centering\vspace{6pt}RDM vision vs.\ audio\\(drop \texttt{fig\_rdm.pdf})\vspace{6pt}}}
+% \caption{Vision--audio representational dissimilarity is uncorrelated ($r=0.05$). Source: \texttt{results/structural\_diagnostic/rdm\_*.npy}.}
+% \label{fig:rdm}
+% \end{figure}
+%
+% \begin{figure}[t]
+% \centering
+% % \includegraphics[width=\columnwidth]{fig_2x2.pdf}
+% \fbox{\parbox{0.9\columnwidth}{\centering\vspace{6pt}2$\times$2 held-out retrieval\\(drop \texttt{fig\_2x2.pdf})\vspace{6pt}}}
+% \caption{Joint-encoder $2{\times}2$: only the shared-classifier cell clears chance, and it is a leak. Source: \texttt{results/joint\_diagnostic/summary.csv}.}
+% \label{fig:2x2}
+% \end{figure}
+
+%=====================================================================
+\section{Discussion}\label{sec:disc}
+%=====================================================================
+The locus of any cross-modal alignment we observe is \emph{architectural
+weight sharing}, not the learning objective. A shared output head
+manufactures alignment by supervising both modalities to the same label
+slot; a shared encoder core produces a weaker, seed-unstable version; and
+the one signal that would constitute genuine cross-modal learning---the
+contrastive loss---does not transfer to held-out classes and in fact harms
+them. Read together with the frozen-backbone result (Procrustes $0\%$, RDM
+$r=0.05$), the conclusion is that separately trained spiking backbones on
+these modalities do not converge to a generalizable cross-modal geometry,
+and co-training alone does not create one.
+
+This is consistent with the zero-shot-learning necessary condition
+\cite{palatucci2009}: zero-shot transfer to unseen classes requires shared
+side information tying the unseen classes to the seen ones. Our fixed
+orthonormal anchors supply such side information for the trained classes
+$\{0,\dots,5\}$ (which is exactly why in-domain retrieval is high), but we
+deliberately withhold it for $\{6,\dots,9\}$. Chance-level held-out
+retrieval is therefore the theoretically predicted outcome. The
+contrastive loss over-specializing to trained classes is the
+empirical signature of this: with nothing tying $6$--$9$ to $0$--$5$,
+optimizing the shared geometry for $0$--$5$ moves it \emph{away} from a
+configuration that would incidentally also serve $6$--$9$.
+
+We are explicit about what these results are \emph{not}. They are not a
+discovery of cross-modal alignment; they are not a claim that convergence
+is impossible in general---only that it is not automatic here, and that
+apparent transfer can be fully explained by architecture and supervision
+leakage. The in-domain numbers are high by construction and are reported
+only to characterize the interface.
+
+%=====================================================================
+\section{Conclusion and Limitations}\label{sec:conc}
+%=====================================================================
+We presented a controlled negative result: cross-modal correspondence
+between separately trained neuromorphic SNN backbones does not generalize
+to held-out digit classes, across nonlinear, linear, and parameter-free
+maps; the backbones share no relational geometry; and the only source of
+apparent held-out alignment in a joint encoder is architectural weight
+sharing (a shared-classifier leak and an unstable shared core), while the
+cross-modal contrastive objective actively hurts held-out transfer. The
+result is exactly what the zero-shot necessary condition predicts when
+side information is withheld.
+
+\noindent\textbf{Limitations.}
+The shared-classifier leak ($95.4\%$) is reported at $n{=}1$ seed and,
+though extreme, should be confirmed over more seeds; the shared-core effect
+is demonstrably seed-unstable (one of three seeds collapses below chance);
+correspondence is evaluated on digits only; and the contrastive-loss
+result holds for one temperature and capacity. The honest route to
+\emph{genuine} discovery is a compositional/shared side-information axis
+(e.g.\ a supplied magnitude or attribute) tying unseen classes to seen
+ones---future work we name but do not run here.
+
+%=====================================================================
+\section*{Acknowledgments}
+\todo{acknowledgments / funding if any.}
+
+%=====================================================================
+%  REFERENCES
+%  Real citation keys reused from paper_skeleton.tex; details flagged
+%  \todo{verify} where author/venue/year must be confirmed before submission.
+%  Palatucci2009 and Xian are NEW (not in the skeleton) and must be verified.
+%=====================================================================
+\begin{thebibliography}{99}
+\bibitem{paper1}
+\todo{Paper 1 --- Modality-Dependent Memory Mechanisms in Cross-Modal
+Neuromorphic Computing (self-cite). Verify title/authors/venue.}
+
+\bibitem{platonic}
+M.~Huh, B.~Cheung, P.~Wang, and P.~Isola, ``The Platonic Representation
+Hypothesis,'' \emph{arXiv:2405.07987}, 2024. \todo{verify}
+
+\bibitem{relreps}
+L.~Moschella, V.~Maiorca, M.~Fumero, A.~Norelli, F.~Locatello, and
+E.~Rodol{\`a}, ``Relative Representations Enable Zero-Shot Latent Space
+Communication,'' in \emph{ICLR}, 2023. \todo{verify}
+
+\bibitem{palatucci2009}
+M.~Palatucci, G.~Hinton, T.~Mitchell, and R.~Salakhutdinov, ``Zero-shot
+Learning with Semantic Output Codes,'' in \emph{Advances in Neural
+Information Processing Systems (NeurIPS)}, 2009.
+\todo{verify --- NEW key, not in skeleton.}
+
+\bibitem{xian}
+\todo{Xian \emph{et al.}, zero-shot learning survey (cite in
+Sec.~\ref{sec:related}). Provide authors, title, venue, year.}
+
+\bibitem{supcon}
+P.~Khosla, P.~Teterwak, C.~Wang, A.~Sarna, Y.~Tian, P.~Isola, A.~Maschinot,
+C.~Liu, and D.~Krishnan, ``Supervised Contrastive Learning,'' in
+\emph{NeurIPS}, 2020. \todo{verify}
+
+\bibitem{shd}
+B.~Cramer, D.~Strotdreses, S.~Senn, and W.~Maass, ``The Heidelberg Spiking
+Data Sets for the Systematic Evaluation of Spiking Neural Networks,''
+\emph{IEEE Trans.\ Neural Netw.\ Learn.\ Syst.}, 2020. \todo{verify}
+
+\bibitem{nmnist}
+G.~Orchard, A.~Jayawant, G.~K.~Cohen, and N.~Thakor, ``Converting Static
+Image Datasets to Spiking Neuromorphic Datasets Using Saccades,''
+\emph{Front.\ Neurosci.}, 2015. \todo{verify}
+\end{thebibliography}
+
+\end{document}

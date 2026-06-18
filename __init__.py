@@ -1,1 +1,1 @@
-"""Data loading utilities"""\n\nfrom .nmnist_loader import get_nmnist_loaders\nfrom .shd_loader import get_shd_loaders, SHDDataset\n
+"""M7 tri-modal continual learning package."""

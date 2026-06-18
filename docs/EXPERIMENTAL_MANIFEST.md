@@ -250,10 +250,10 @@ The large negative values are actually *negative forgetting* (i.e., backward tra
 ### 9.1 Code (→ GitHub)
 
 ```
-m7_trimodal_run.py          # Main training script
-generate_figures.py         # Old figure generation (seed 42)
-generate_figures_3seed.py   # New figure generation (3 seeds)
-EXPERIMENTAL_MANIFEST.md    # This file
+code/m7_trimodal_run.py          # Main training script
+code/generate_figures.py         # Old figure generation (seed 42)
+code/generate_figures_3seed.py   # New figure generation (3 seeds)
+docs/EXPERIMENTAL_MANIFEST.md    # This file
 ```
 
 ### 9.2 Results (→ GitHub)
@@ -280,14 +280,14 @@ ICONS_M7/datasets/    # 23 GB — will be auto-downloaded by tonic
 ## 10. REPRODUCTION COMMAND
 
 ```bash
-cd /Users/agent1/Documents/neuromorphic/neurips
-source .venv/bin/activate
+cd /Users/agent1/Documents/neuromorphic/m7-trimodal-cl
+source code/.venv/bin/activate
 
 # Run all seeds
-python m7_trimodal_run.py
+python code/m7_trimodal_run.py
 
 # Generate figures
-python generate_figures_3seed.py
+python code/generate_figures_3seed.py
 ```
 
 **Hardware:** MacBook Pro M1 (MPS)  

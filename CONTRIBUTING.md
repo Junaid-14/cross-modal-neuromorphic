@@ -104,7 +104,7 @@ def train_model(
 
 ### New Models
 If you're adding a new memory mechanism or architecture:
-1. Create new file in `models/`
+1. Create new file in `Models/`
 2. Follow existing model structure
 3. Add configuration in `experiments/`
 4. Add tests in `tests/`
@@ -112,14 +112,14 @@ If you're adding a new memory mechanism or architecture:
 
 ### New Datasets
 If you're adding support for a new neuromorphic dataset:
-1. Create loader in `data/`
+1. Create loader in `Dataloaders/`
 2. Follow existing loader structure
 3. Add download script
 4. Update documentation
 
 ### New Analysis
 If you're adding new analysis methods:
-1. Create script in `analysis/`
+1. Create script in `code/`
 2. Add visualization utilities
 3. Document usage
 4. Add example notebook

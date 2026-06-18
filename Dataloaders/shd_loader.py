@@ -48,7 +48,7 @@ def _events_to_dense(events) -> torch.Tensor:
 def get_shd_loaders(
     batch_size: int = 32,
     num_workers: int = 2,
-    save_to: str = "./data",
+    save_to: str = "./ICONS_M7/datasets",
     use_cache: bool = True,
     cache_path: Path | None = None,
     force_recreate: bool = False,
