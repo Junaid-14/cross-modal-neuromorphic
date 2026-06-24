@@ -11,10 +11,6 @@ code/reports/
 repomix-output.xml
 .DS_Store
 .obsidian/workspace.json
-code/reports/
-repomix-output.xml
-.DS_Store
-.obsidian/workspace.json
 
 # Obsidian
 .obsidian/
@@ -24,6 +20,11 @@ docs/Welcome.md
 # SpiNNaker scratch (not part of M7 PR)
 code/test_spinnaker_*.py
 code/SpiNNaker_Port_Plan.md
+
+# Research RAG generated artifacts
+resources/rag/index/
+resources/rag/ingested.json
+resources/rag/chroma/
 
 # Working notes
 docs/01 - Notes/
