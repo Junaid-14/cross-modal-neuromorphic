@@ -513,7 +513,9 @@ TASKS = {
     'dvs':    {'num_classes': 11, 'type': 'visual_motion'},
 }
 
-SEEDS = [123, 456]  # Run additional seeds for statistical significance
+SEEDS = [42, 123, 456]  # Documented policy: all three seeds. Seed 42 was previously
+                        # missing here, which silently made every "3-seed mean ± std"
+                        # a 2-seed number.
 CONDITIONS = ['no_replay', 'replay']
 
 def run_one_seed(seed, condition):
@@ -539,6 +541,7 @@ def run_one_seed(seed, condition):
         r1 = trainer.train_task('nmnist', 'nmnist', train_loader_nmnist, val_loader_nmnist, test_loader_nmnist,
                                 num_epochs=15, patience=5, lr=1e-3, use_replay=False, use_scl=True, scl_weight=0.1, step_id=1)
         torch.save({'model_state_dict': model.state_dict()}, CKPT_DIR / f'final_nmnist_nmnist_seed{seed}_{condition}.pt')
+        _save_gate_history(seed, condition, 'T1_nmnist', r1['history'])
     acc_t1 = trainer.evaluate(test_loader_nmnist, 'nmnist', 'nmnist')
     print(f"   T1 Test: {acc_t1:.2f}%")
 
@@ -566,6 +569,7 @@ def run_one_seed(seed, condition):
                                 use_replay=use_replay, replay_task_ids=[1] if use_replay else None,
                                 use_scl=True, scl_weight=0.1, step_id=2)
         torch.save({'model_state_dict': model.state_dict()}, CKPT_DIR / f'final_shd_shd_seed{seed}_{condition}.pt')
+        _save_gate_history(seed, condition, 'T2_shd', r2['history'])
     acc_t2_after_t2 = trainer.evaluate(test_loader_shd, 'shd', 'shd')
     print(f"   T2 Test: {acc_t2_after_t2:.2f}%")
 
@@ -592,6 +596,7 @@ def run_one_seed(seed, condition):
                                 use_replay=use_replay, replay_task_ids=[1, 2] if use_replay else None,
                                 use_scl=True, scl_weight=0.1, step_id=3)
         torch.save({'model_state_dict': model.state_dict()}, CKPT_DIR / f'final_dvs_dvs_seed{seed}_{condition}.pt')
+        _save_gate_history(seed, condition, 'T3_dvs', r3['history'])
     acc_t3 = trainer.evaluate(test_loader_dvs, 'dvs', 'dvs')
     print(f"   T3 Test: {acc_t3:.2f}%")
 
@@ -641,6 +646,43 @@ def run_one_seed(seed, condition):
 #  RUN
 # ═══════════════════════════════════════════════════════════════════════════════
 import pandas as pd
+
+def _save_gate_history(seed, condition, task, history):
+    """Persist the per-epoch adaptive-gate trajectory that train_task already measures.
+
+    The w_hop / w_hgrn split is the paper's core novelty claim ("the gate only learns to use
+    HGRN under replay"). train_task computes it every epoch and prints it to stdout -- and
+    then it was discarded when the process exited. With nothing on disk, Figure 3 had to be
+    drawn from hardcoded literals, which violates RULE 1. This writes the measurement out so
+    the figure can actually be sourced.
+
+    Purely additive: it records values that already exist in memory. It does not touch the
+    forward/backward pass, consume RNG, or change any number.
+    """
+    n = len(history.get('gate_hop', []))
+    if n == 0:
+        return
+    rows = [
+        {
+            'seed': seed,
+            'condition': condition,
+            'task': task,
+            'epoch': epoch + 1,
+            'gate_hop': history['gate_hop'][epoch],
+            'gate_hgrn': history['gate_hgrn'][epoch],
+            'train_acc': history['train_acc'][epoch],
+            'val_acc': history['val_acc'][epoch],
+            'train_loss': history['train_loss'][epoch],
+        }
+        for epoch in range(n)
+    ]
+    path = RESULTS_DIR / 'gate_trajectory.csv'
+    df_new = pd.DataFrame(rows)
+    if path.exists():
+        df_new = pd.concat([pd.read_csv(path), df_new], ignore_index=True)
+    df_new.to_csv(path, index=False)
+    print(f"   💾 Gate trajectory ({n} epochs) → {path}")
+
 
 def _save_incremental(seed, condition, metric_name, metric_value):
     """Append incremental result to CSV after each task."""

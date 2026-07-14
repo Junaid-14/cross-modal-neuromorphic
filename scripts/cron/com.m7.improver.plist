@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Template: install.sh replaces __REPO__ and copies this to ~/Library/LaunchAgents/.
+     OPT-IN: only loaded by `install.sh --with-improver`, after /improve-repo has been hand-tuned. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.m7.improver</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>__REPO__/scripts/cron/run-improver.sh</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key><integer>6</integer>
+    <key>Minute</key><integer>30</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>__REPO__/scripts/cron/logs/improver.launchd.out</string>
+  <key>StandardErrorPath</key>
+  <string>__REPO__/scripts/cron/logs/improver.launchd.err</string>
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

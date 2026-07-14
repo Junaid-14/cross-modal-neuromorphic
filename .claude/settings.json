@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+
+  "permissions": {
+    "deny": [
+      "Edit(**/*.pt)",
+      "Write(**/*.pt)",
+      "Edit(**/*.pth)",
+      "Write(**/*.pth)",
+
+      "Edit(**/results/**/*.csv)",
+      "Write(**/results/**/*.csv)",
+      "Edit(**/ICONS_M7/**)",
+      "Write(**/ICONS_M7/**)",
+
+      "Edit(../**)",
+      "Write(../**)",
+
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(**/.spynnaker.cfg)"
+    ],
+
+    "ask": [
+      "Read(../**)"
+    ],
+
+    "allow": [
+      "Bash(pytest*)",
+      "Bash(python -m pytest*)",
+      "Bash(python3 -m pytest*)",
+      "Bash(python -m py_compile*)",
+      "Bash(python3 -m py_compile*)",
+      "Bash(python3.11 --version)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git ls-files*)",
+      "Bash(ruff*)",
+
+      "Bash(git rev-parse*)",
+      "Bash(date *)",
+
+      "Bash(gh api*)",
+      "Bash(gh repo view*)",
+      "Bash(gh release*)",
+      "Bash(git ls-remote*)",
+
+      "Bash(git worktree*)",
+      "Bash(git switch -c*)",
+      "Bash(git checkout -b*)",
+
+      "Bash(git -C knowledge*)"
+    ]
+  },
+
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/session_state.py\"",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/guard_boundary.py\"",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/guard_long_runs.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/py_syntax_check.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

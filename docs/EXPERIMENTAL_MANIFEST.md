@@ -170,20 +170,34 @@ class M7_ContinualAdaptiveModel(nn.Module):
 
 ### 6.2 SNN Backbone (N-MNIST & DVS-Gesture)
 
+Verbatim from `code/m7_trimodal_run.py` (the implementation is authoritative):
+
 ```python
 class SNN_Backbone(nn.Module):
     def __init__(self, input_channels=2, num_classes=10):
         self.conv1 = nn.Conv2d(input_channels, 32, 5)
-        self.lif1 = snn.Leaky(beta=0.9, spike_grad=spike_grad)
+        self.pool1 = nn.MaxPool2d(2)
+        self.lif1  = snn.Leaky(beta=CONFIG['beta'], spike_grad=spike_grad)
         self.conv2 = nn.Conv2d(32, 64, 5)
-        self.lif2 = snn.Leaky(beta=0.9, spike_grad=spike_grad)
-        self.conv3 = nn.Conv2d(64, 128, 3)
-        self.lif3 = snn.Leaky(beta=0.9, spike_grad=spike_grad)
-        self.fc1 = nn.Linear(128 * 2 * 2, 256)
-        self.lif4 = snn.Leaky(beta=0.9, spike_grad=spike_grad)
-        self.fc2 = nn.Linear(256, 512)
-        self.lif5 = snn.Leaky(beta=0.9, spike_grad=spike_grad)
+        self.pool2 = nn.MaxPool2d(2)
+        self.lif2  = snn.Leaky(beta=CONFIG['beta'], spike_grad=spike_grad)
+        self.fc1   = nn.Linear(64 * 5 * 5, 1024)     # 1600 -> 1024
+        self.lif3  = snn.Leaky(beta=CONFIG['beta'], spike_grad=spike_grad)
+        self.fc2   = nn.Linear(1024, 512)
+        self.lif4  = snn.Leaky(beta=CONFIG['beta'], spike_grad=spike_grad)
+        self.fc3   = nn.Linear(512, num_classes)     # unused in full M7 (per-task heads take over)
+        self.lif5  = snn.Leaky(beta=CONFIG['beta'], spike_grad=spike_grad)
 ```
+
+> **Corrected 2026-07-14.** This section previously described a **3-conv** backbone
+> (`conv3 = Conv2d(64, 128, 3)`, `fc1 = Linear(128*2*2, 256)`, `fc2 = Linear(256, 512)`).
+> That never matched the code. The implementation has **two** conv layers, each followed by
+> `MaxPool2d(2)`, and `fc1` is **`Linear(1600, 1024)`**.
+>
+> This matters beyond bookkeeping: **FC1 = 1600 × 1024 = 1,638,400 weights**, which is exactly
+> the figure the SpiNNaker core budget is built on (6.55 MB → ~205 cores). The 3-conv spec would
+> have implied a completely different fan-in and a wrong core estimate.
+> `M7_Architecture_Deep_Dive.md` and `SpiNNaker_Port_Plan.md` already had this right.
 
 - **β = 0.9** for ALL LIF neurons (shared hyperparameter)
 - **Input channels:** 2 (for both N-MNIST and DVS-Gesture)

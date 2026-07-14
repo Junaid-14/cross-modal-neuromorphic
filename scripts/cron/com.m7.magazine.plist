@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Template: install.sh replaces __REPO__ with the absolute repo path and copies this to
+     ~/Library/LaunchAgents/. Do not load this file in place. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.m7.magazine</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>__REPO__/scripts/cron/run-magazine.sh</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key><integer>6</integer>
+    <key>Minute</key><integer>0</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>__REPO__/scripts/cron/logs/magazine.launchd.out</string>
+  <key>StandardErrorPath</key>
+  <string>__REPO__/scripts/cron/logs/magazine.launchd.err</string>
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

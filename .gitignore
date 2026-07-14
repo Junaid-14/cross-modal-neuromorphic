@@ -34,3 +34,30 @@ docs/SESSION_SAVE_*.md
 
 # Duplicate/backup code
 code/NeurIPS2026_M7_clean*
+
+# --- Claude Code harness -------------------------------------------------
+# The committed harness (.claude/settings.json, agents, skills, hooks, rules,
+# workflows) IS tracked on purpose — it is shared team infrastructure.
+# Only personal overrides and machine-local agent memory are ignored.
+.claude/settings.local.json
+.claude/agent-memory-local/
+
+# --- sPyNNaker auto-generated provenance ---------------------------------
+# Not research output. 33 of these were committed by accident, and one
+# stack_trace leaks an absolute dev path. Only `code/reports/` was ignored.
+# To stop tracking the already-committed ones: git rm -r --cached reports/
+reports/
+
+# --- Knowledge vault + automation scheduling -----------------------------
+# The knowledge/ vault is ITS OWN git repo with a private remote (nested; see
+# knowledge/README.md). The parent repo ignores it entirely so daily digests
+# never pollute the research repo's history.
+knowledge/
+
+# Scheduling: env.sh holds the API key; logs are per-run output. Never commit.
+scripts/cron/env.sh
+scripts/cron/logs/
+
+# Improver draft branches live in an in-repo git worktree (kept inside the tree so the boundary
+# hook allows it; the branch itself carries the changes). Never commit the worktree dir.
+.worktrees/
