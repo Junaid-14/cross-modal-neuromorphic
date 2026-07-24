@@ -1,0 +1,25 @@
+{
+  "packages_of_interest": [
+    "torch",
+    "torchaudio",
+    "torchvision",
+    "snntorch",
+    "tonic",
+    "transformers",
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "scipy",
+    "h5py",
+    "tqdm",
+    "pytest",
+    "sentence-transformers"
+  ],
+  "notes": {
+    "torch": "Major version bumps may change LIF semantics; verify spike-rate parity on smoke tests.",
+    "snntorch": "Check release notes for neuron / surrogate gradient changes before upgrading.",
+    "tonic": "DVS-Gesture download behavior changes between releases; keep a fallback path.",
+    "transformers": "Only used indirectly; pin unless explicitly needed.",
+    "sentence-transformers": "RAG semantic search depends on this; hash fallback works offline."
+  }
+}

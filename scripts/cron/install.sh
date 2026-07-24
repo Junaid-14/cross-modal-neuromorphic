@@ -2,6 +2,10 @@
 # Install the M7 launchd jobs. Usage:
 #   bash scripts/cron/install.sh                 # magazine + repo-watch (daily)
 #   bash scripts/cron/install.sh --with-improver # also the improver (opt-in, after hand-tuning)
+#
+# For the simpler cron-based schedule (no Claude Code binary or API key required),
+# see scripts/cron/install-cron.sh.
+
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"

@@ -119,6 +119,12 @@ session — note these are the **legacy** package and are not used by `code/m7_t
 - Use feature branches (e.g., `feature/your-feature-name`).
 - PRs should include a detailed description, link related issues, and note any performance changes; ensure tests pass before submission.
 
+## Research Resources
+- `resources/research/` is a symlink to the external Obsidian research vault. Do not move or rename it without updating `resources/rag/config.py`.
+- The local RAG (`resources/rag/`) indexes `01_Literature`, `02_Concepts`, `03_Projects`, and `04_Meetings_and_Logs`.
+- Run `python code/rag_ingest.py` after adding or editing notes in the vault.
+- Claude skills in `.claude/skills/` rely on the RAG; keep them in sync with any RAG schema changes.
+
 ## Research/Analysis Notes
 - New memory mechanisms or datasets should include a matching loader or model module, documentation updates, and tests in `tests/`.
 - When adding new datasets from Tonic, create a loader in `Dataloaders/`, wire it into `Models/backbones.py`, and add mocked pytest tests to `tests/test_dataloaders.py`.
@@ -138,6 +144,13 @@ These are enforced by the harness in `.claude/`; see `.claude/rules/research-int
 Also: hypotheses are not results; accuracy always travels with spike rate / sparsity and
 timestep count; never refactor in a way that silently changes numerics; never write outside
 this repo.
+
+## Automation Layer
+- The assistants documented in `docs/AUTOMATION_TUTORIAL.md` are implemented in `code/automation/` and registered as Claude Code slash commands in `.claude/commands/`.
+- All automation outputs must land under `knowledge/`; never write automation reports into `results/`, `code/`, or `paper/`.
+- Automation scripts are allowed to read production code and results, but they must only **suggest** changes — they never edit `code/`, `Models/`, `paper/`, or numeric artifacts on their own.
+- If you add a new automation assistant, add the matching `.claude/commands/<name>.md` file and update both `CLAUDE.md` and `docs/AUTOMATION_TUTORIAL.md`.
+- Validate automation changes by running the script from the repo root (e.g., `python code/automation/improve_repo.py --dry-run`).
 
 ## Running environment
 - This code base is deployed to a Runpod pod.

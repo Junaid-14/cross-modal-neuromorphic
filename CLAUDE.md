@@ -69,6 +69,14 @@ python code/m7_trimodal_run.py
 
 # Figures — requires a results CSV, which does not exist yet
 python code/generate_figures_3seed.py
+
+# Automation assistants (see docs/AUTOMATION_TUTORIAL.md)
+python code/automation/magazine.py
+python code/automation/repo_watch.py
+python code/automation/consult.py
+python code/automation/improve_paper.py
+python code/automation/improve_repo.py
+python code/automation/lesson.py "what the assistants should remember"
 ```
 
 ⚠️ `pytest tests/` exercises the **legacy bi-modal** package, not M7. Passing tests do **not**
@@ -126,6 +134,47 @@ SpiNNaker budget rests on.
 defaults to 256, but the call site overrides it — **read the call site.** The legacy
 `Models/hopfield_layer.py` genuinely uses 256; that is a different codebase, not a
 contradiction. See `.claude/rules/contested-facts.md`.
+
+## Research resources
+
+The project links to a sibling Obsidian vault at `resources/research/` (symlinked from
+`/Users/agent1/Documents/neuromorphic/research`). The local RAG indexes literature notes,
+concept notes, project notes, and meeting logs so Claude can ground suggestions in the
+actual research corpus rather than hallucinate citations.
+
+### Claude skills
+Anthropic-style skills live in `.claude/skills/`:
+- **research-dream** — grounded ideation, architecture brainstorming, experiment proposals.
+- **research-steer** — convention-aware review of plans, PRDs, and diffs.
+- **research-analyze-pdf** — analyze a PDF and write a structured literature note to the vault.
+
+Both skills query the RAG via `python code/rag_query.py ... --context`. When a skill is
+invoked, ensure the index is fresh (`python code/rag_ingest.py`) before relying on results.
+
+### Automation assistants (`docs/AUTOMATION_TUTORIAL.md`)
+A second automation layer is registered as Claude Code slash commands in `.claude/commands/`.
+All reports land in the `knowledge/` vault.
+
+| Command | Script | Output |
+|---|---|---|
+| `/research-magazine` | `python code/automation/magazine.py` | `knowledge/10-Research-Magazine/YYYY-MM-DD.md` |
+| `/repo-watch` | `python code/automation/repo_watch.py` | `knowledge/20-Repo-Watch/YYYY-MM-DD.md` |
+| `/consult` | `python code/automation/consult.py` | `knowledge/30-Consultant/YYYY-MM-DD_HH-MM-SS.md` |
+| `/improve-paper` | `python code/automation/improve_paper.py` | `knowledge/40-Paper/YYYY-MM-DD_HH-MM-SS.md` |
+| `/improve-repo` | `python code/automation/improve_repo.py` | `knowledge/60-Patches/YYYY-MM-DD_HH-MM-SS.md` |
+| `/lesson "..."` | `python code/automation/lesson.py "..."` | `knowledge/01-Lessons/YYYY-MM-DD_HH-MM-SS.md` |
+
+Daily cron setup: `bash scripts/cron/install-cron.sh` (launchd setup: `bash scripts/cron/install.sh`).
+
+### Ingestion rules
+- Literature notes use YAML frontmatter; the parser extracts `title`, `authors`, `year`,
+  and `tags` for richer metadata.
+- Ingestion is incremental: only changed or new files are re-embedded.
+- If `sentence-transformers` is not installed, the system falls back to a deterministic
+  hash embedder so the harness still works for testing; install the package for real
+  semantic search.
+
+## Known issues
 
 ## The five critical rules — non-negotiable
 

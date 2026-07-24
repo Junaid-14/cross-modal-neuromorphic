@@ -1,8 +1,18 @@
-# Scheduling — macOS launchd
+# Scheduling the M7 automation assistants
 
-Unattended scheduling for the recurring workflows. Claude Code has **no native scheduler**, so
-`launchd` runs a wrapper script that calls headless `claude -p`, which writes into the `knowledge/`
-vault and backs it up.
+This folder contains two ways to run the recurring workflows unattended:
+
+1. **launchd** (macOS) — uses `claude -p` to invoke the project skills and writes into `knowledge/`.
+2. **cron** (portable) — runs the Python automation scripts in `code/automation/` directly.
+
+Pick whichever fits your environment.
+
+---
+
+## Option 1: launchd (macOS)
+
+Claude Code has **no native scheduler**, so `launchd` runs a wrapper script that calls headless
+`claude -p`, which writes into the `knowledge/` vault and backs it up.
 
 | Job | Skill | When | Loaded by default? |
 |---|---|---|---|
@@ -10,7 +20,7 @@ vault and backs it up.
 | `com.m7.repo-watch` | `/repo-watch` | daily 06:15 | ✅ |
 | `com.m7.improver` | `/improve-repo` (report mode) | daily 06:30 | ❌ opt-in |
 
-## Setup (one time)
+### Setup (one time)
 
 ```bash
 # 1. Fill in your environment (API key, claude path, repo path).
@@ -31,7 +41,7 @@ launchctl list | grep com.m7
 bash scripts/cron/uninstall.sh
 ```
 
-## Why non-bare (`claude -p`, not `claude --bare -p`)
+### Why non-bare (`claude -p`, not `claude --bare -p`)
 
 `--bare` skips auto-discovery of **skills, hooks, MCP, and auto-memory**. That would mean the
 scheduled run couldn't find `/research-magazine`, and — worse — would run with `guard_boundary.py`
@@ -44,7 +54,7 @@ and the other guard hooks **disabled**. The whole point of this harness is those
 physically cannot launch the 4–5 hour training (`guard_long_runs.py` would `ask`, and an `ask`
 under `dontAsk` is denied).
 
-## launchd realities
+### launchd realities
 
 - `StartCalendarInterval` does **not** fire while the Mac is asleep. A missed daily run coalesces
   into a single run on wake — so the magazine is ready when you open the lid. That's intended.
@@ -52,7 +62,7 @@ under `dontAsk` is denied).
 - Logs: JSON result + stderr per run in `scripts/cron/logs/` (gitignored). The JSON captures
   `result`, `session_id`, and `total_cost_usd` — that's your cost/audit trail.
 
-## What each run does
+### What each run does
 
 1. `claude -p "/<skill>"` → the skill runs its workflow and writes notes into `knowledge/`.
 2. Backstop `git -C knowledge add/commit/push` (the skill also pushes; idempotent).
@@ -60,3 +70,57 @@ under `dontAsk` is denied).
 
 The improver wrapper runs **report mode only** (no `apply`) — it never touches the working tree
 unattended; it writes a findings report + proposed patches into `knowledge/60-Patches/`.
+
+---
+
+## Option 2: cron (portable)
+
+This is a simpler, Python-only schedule that runs the scripts in `code/automation/` directly. It
+does not require the Claude Code binary or an API key; it uses the local RAG, PyPI JSON, and
+local file checks.
+
+| Job | Script | When |
+|---|---|---|
+| `research-magazine` | `python code/automation/magazine.py` | daily 8:57 AM |
+| `repo-watch` | `python code/automation/repo_watch.py` | daily 9:03 AM |
+
+### Files
+
+| File | Purpose |
+|---|---|
+| `run_magazine.sh` | Wrapper that runs `code/automation/magazine.py`. |
+| `run_repo_watch.sh` | Wrapper that runs `code/automation/repo_watch.py`. |
+| `install-cron.sh` | Idempotent script that adds the cron jobs. |
+
+### Setup (one time)
+
+From the repo root:
+
+```bash
+bash scripts/cron/install-cron.sh
+```
+
+This adds two cron entries:
+
+- `research-magazine` at **8:57 AM** local time
+- `repo-watch` at **9:03 AM** local time
+
+Both write to `knowledge/50-Sessions/cron.log`.
+
+### Manual run
+
+If you don't want cron, run the wrappers by hand:
+
+```bash
+bash scripts/cron/run_magazine.sh
+bash scripts/cron/run_repo_watch.sh
+```
+
+### Uninstall
+
+Remove the two lines containing `scripts/cron/run_magazine.sh` and
+`scripts/cron/run_repo_watch.sh` from your crontab:
+
+```bash
+crontab -e
+```

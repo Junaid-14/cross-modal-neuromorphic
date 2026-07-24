@@ -87,7 +87,7 @@ Once someone sets up the automatic schedule (a one-time technical step — see "
 here's what happens **without anyone doing anything**:
 
 1. **Early each morning**, the Magazine and Repo Watch run on their own.
-2. When they finish, you get a little **pop-up notification** on the Mac: *"Today's issue is ready."*
+2. When they finish, they save their reports into the Vault.
 3. You grab your coffee, open the Vault's front page (`knowledge/00-MOCs/index.md`), and read.
 
 That's the whole idea: the newest, most relevant stuff is waiting for you when you wake up. Like a
@@ -173,14 +173,14 @@ This is deliberate: the assistants do the tedious searching and checking; **you*
 
 ---
 
-## Setup (one-time — you can ask whoever set this up)
+## Setup (one-time)
 
 Most of this you'll never touch. But so you know it exists: before the automatic morning runs work,
-someone has to do a short one-time setup (add a key, turn on the daily schedule, connect the Vault's
-backup). The step-by-step for that lives in **`scripts/cron/README.md`**. If the morning
-notifications aren't showing up, that's the file to check — or just ask the person who installed it.
+someone has to do a short one-time setup to enable the cron schedule. The step-by-step for that lives
+in **`scripts/cron/README.md`**. If the morning reports aren't showing up in `knowledge/10-Research-Magazine/`
+and `knowledge/20-Repo-Watch/`, that's the file to check.
 
-Until that's done, everything still works — you just run the commands by hand whenever you want them.
+Until cron is enabled, everything still works — you just run the commands by hand whenever you want them.
 
 ---
 
